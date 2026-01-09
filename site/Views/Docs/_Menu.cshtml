@@ -1,0 +1,11 @@
+﻿@model IEnumerable<string>
+<!-- Mostra o menu lateral de documentos -->
+<ul class="list-group">
+    @foreach (var doc in Model)
+    {
+        var url = Url.Action("Index", "Docs", new { id = doc });
+        <li class="list-group-item">
+            <a class="doc-link" href="@url" data-doc="@doc">@doc</a>
+        </li>
+    }
+</ul>

@@ -1,0 +1,71 @@
+﻿<!-- ========== App Menu ========== -->
+<div class="app-menu navbar-menu">
+    <!-- LOGO -->
+    <div class="navbar-brand-box">
+        <!-- Dark Logo-->
+        <a href="@Url.Action("Index", "Docs")" class="logo logo-dark">
+            <span class="logo-sm">
+                <img src="~/assets/images/logo/logo-icon-white.png" alt="" height="30" />
+            </span>
+            <span class="logo-lg">
+                <img src="~/assets/images/logo/logo-white.png" alt="" height="50">
+            </span>
+        </a>
+        <!-- Light Logo-->
+        <a href="@Url.Action("Index", "Docs")" class="logo logo-light">
+            <span class="logo-sm">
+                <img src="~/assets/images/logo/logo-icon-white.png" alt="" height="30" />
+            </span>
+            <span class="logo-lg">
+                <img src="~/assets/images/logo/logo-white.png" alt="" height="50">
+            </span>
+        </a>
+        <button type="button" class="btn btn-sm p-0 fs-20 header-item float-end btn-vertical-sm-hover" id="vertical-hover">
+            <i class="ri-record-circle-line"></i>
+        </button>
+    </div>
+
+    <div id="scrollbar">
+        <div class="container-fluid">
+
+            <div id="two-column-menu">
+            </div>
+            <ul class="navbar-nav" id="navbar-nav">
+
+                <li class="menu-title"><i class="ri-more-fill"></i> <span data-key="t-pages">Páginas</span></li>
+                <li class="nav-item">
+                    <a class="nav-link menu-link" href="@Url.Action("Index", "Docs")">
+                        <i class="fa-solid fa-book"></i> <span data-key="t-documentacao">Documentação</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link menu-link" href="@Url.Action("index", "swagger")">
+                        <i class="fa-solid fa-microchip"></i> <span data-key="t-api">API</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link menu-link" href="@Url.Action("index", "Charts")">
+                        <i class="fa-solid fa-chart-mixed-up-circle-dollar"></i> <span data-key="t-charts">Gráficos</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link menu-link" href="https://adminer.rodrigojager.com" target="_blank" rel="noopener noreferrer">
+                        <i class="fa-solid fa-database"></i> <span data-key="t-database">Banco de Dados</span>
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link menu-link" href="https://github.com/rodrigojager/bitcoin-ml/">
+                        <i class="fa-brands fa-github"></i> <span data-key="t-github">GitHub</span>
+                    </a>
+                </li>
+
+            </ul>
+        </div>
+        <!-- Sidebar -->
+    </div>
+    <div class="sidebar-background"></div>
+</div>
+<!-- Left Sidebar End -->
+<!-- Vertical Overlay-->
+<div class="vertical-overlay"></div>

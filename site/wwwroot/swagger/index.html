@@ -1,0 +1,165 @@
+﻿<!-- HTML for static distribution bundle build -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Swagger UI</title>
+    <link href="custom-swagger.css" rel="stylesheet" />
+    <link rel="stylesheet" type="text/css" href="./swagger-ui.css" />
+    <link rel="stylesheet" type="text/css" href="index.css" />
+    <link rel="icon" type="image/png" href="../assets/images/favicon.ico" />
+
+</head>
+
+    
+
+<body class="h-100">
+    <div class="container-fluid  h-100">
+        <div class="row flex-nowrap min-vh-100">
+            <div id="swagger-ui" class="col p-4"></div>
+        </div>
+
+    </div>
+    <script src="./swagger-ui-bundle.js"></script>
+    <script src="./swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = () => {
+            fetch('/code-samples.yaml')
+                .then(r => r.text())
+                .then(text => {
+                    window.__codeSamples = jsyaml.load(text) || {};
+                })
+                .catch(err => console.error('NÃO FOI POSSÍVEL LER code-samples.yaml', err));
+            const ui = SwaggerUIBundle({
+                url: "/swagger/v1/swagger.json",
+                dom_id: '#swagger-ui',
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                layout: "BaseLayout",
+                deepLinking: true,
+                
+
+                onComplete: () => {
+                    // injeta o menu depois que a UI estiver pronta
+                    fetch('/swagger/menu')
+                        .then(r => r.text())
+                        .then(html => {
+                            // coloca o menu acima da UI
+                            document
+                                .getElementById('swagger-ui')
+                                .insertAdjacentHTML('beforebegin', html);
+
+                            // carrega os scripts necessários (Bootstrap e app.js)
+                            const scripts = [
+                                '/assets/libs/bootstrap/js/bootstrap.bundle.min.js',
+                                '/assets/js/app.js'
+                            ];
+
+                            // Função auxiliar para carregar scripts em sequência
+                            scripts.reduce((prevPromise, src) => {
+                                return prevPromise.then(() => new Promise((resolve, reject) => {
+                                    const s = document.createElement('script');
+                                    s.src = src;
+                                    s.onload = resolve;
+                                    s.onerror = reject;
+                                    document.head.appendChild(s);
+                                }));
+                            }, Promise.resolve()).catch(err => console.error('Erro ao carregar scripts:', err));
+                        })
+                        .catch(err => console.error('Erro ao carregar menu:', err));
+                }
+            });
+            window.ui = ui;
+            const root = document.getElementById('swagger-ui');
+
+            // Observa mutações toda vez que alguém expande/colapsa um opblock
+            new MutationObserver(injectSamples).observe(root, {
+                childList: true, subtree: true
+            });
+
+            function injectSamples() {
+                const data = window.__codeSamples;
+                if (!data) return;
+
+                document
+                    .querySelectorAll('.opblock-body:not([data-samples])')
+                    .forEach(body => {
+                        const opblock = body.closest('.opblock');
+                        const path = opblock.querySelector('.opblock-summary-path')
+                            .textContent.trim();
+                        const method = opblock.querySelector('.opblock-summary-method')
+                            .textContent.trim().toLowerCase();
+                        const samples = data[path]?.[method];
+                        if (!samples) return;                         // não há exemplos
+
+                        body.setAttribute('data-samples', 'injected');
+
+                        /* ----- ids únicos para nav/tab (substitui / e { } por _ ) ------ */
+                        const uidBase = (path + '-' + method).replace(/[^\w]/g, '_');
+
+                        /* --------- cria NAV TABS --------------------------------------- */
+                        const nav = document.createElement('ul');
+                        nav.className = 'nav nav-pills nav-customs nav-danger mb-3 mt-3';
+                        nav.role = 'tablist';
+
+                        /* --------- cria CONTAINER de abas ------------------------------ */
+                        const content = document.createElement('div');
+                        content.className = 'tab-content text-muted';
+
+                        samples.forEach((s, idx) => {
+                            const tabId = `${uidBase}-tab-${idx}`;
+                            const paneId = `${uidBase}-pane-${idx}`;
+
+                            /* NAV ITEM */
+                            const li = document.createElement('li');
+                            li.className = 'nav-item';
+                            li.role = 'presentation';
+
+                            const a = document.createElement('a');
+                            a.className = 'nav-link' + (idx === 0 ? ' active' : '');
+                            a.dataset.bsToggle = 'tab';
+                            a.href = `#${paneId}`;
+                            a.role = 'tab';
+                            a.ariaSelected = idx === 0 ? 'true' : 'false';
+                            a.textContent = s.label || s.lang;
+                            li.appendChild(a);
+                            nav.appendChild(li);
+
+                            /* TAB PANE */
+                            const pane = document.createElement('div');
+                            pane.className = 'tab-pane' + (idx === 0 ? ' active show' : '');
+                            pane.id = paneId;
+                            pane.role = 'tabpanel';
+
+                            /* conteúdo do código */
+                            const pre = document.createElement('pre');
+                            pre.className = 'language-js';
+                            const code = document.createElement('code');
+                            code.className = 'language-js';
+                            code.textContent = s.source.replaceAll('{{BASE_URL}}', location.origin);
+                            pre.appendChild(code);
+                            pane.appendChild(pre);
+                            content.appendChild(pane);
+                        });
+
+                        const container = document.createElement('div');
+                        container.className = 'opblock-section-header';
+                        const h4 = document.createElement('h4');
+                        h4.textContent = 'Code Samples';
+                        container.appendChild(h4);
+
+                        const respWrapper = body.querySelector('.responses-wrapper') || body;
+                        respWrapper.insertAdjacentElement('afterend', container);
+                        container.insertAdjacentElement('afterend', nav);
+
+                        /* --- insere a CONTENT logo DEPOIS da NAV recém-injetada ------ */
+                        nav.insertAdjacentElement('afterend', content);
+                    });
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
+</body>
+</html>

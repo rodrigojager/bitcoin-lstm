@@ -1,0 +1,15 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    <!-- herda cabeçalho/navbar etc -->
+}
+
+
+@section DocsScripts {
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"
+            onload="hljs.highlightAll();"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({ startOnLoad: true });</script>
+}
+@RenderBody()
+@RenderSection("Scripts", required: false)

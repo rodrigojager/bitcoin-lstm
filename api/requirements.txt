@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pandas
+numpy
+psycopg2-binary
+requests
+joblib
+python-dotenv
+scikit-learn
+tensorflow==2.16.1
+psutil
+prometheus-client

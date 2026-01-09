@@ -1,0 +1,21 @@
+{
+  "name": "TechChallenge",
+  "version": "1.0.0",
+  "description": "ASP.NET Core MVC + React 19 + esbuild",
+  "author": "Rodrigo Jäger",
+  "license": "MIT",
+  "scripts": {
+    "build": "node build/esbuild.js",
+    "type-check": "tsc --noEmit",
+    "postinstall": "echo \"✔️  Dependências NPM instaladas\""
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.17",
+    "typescript": "^5.5.0"
+  }
+}

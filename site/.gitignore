@@ -1,0 +1,96 @@
+###############################################################################
+# DOTNET / VISUAL STUDIO                                                      #
+###############################################################################
+
+## Pastas de saída de build
+bin/
+obj/
+
+## Arquivos de log e cache de VS
+*.user
+*.rsuser
+*.suo
+*.userosscache
+.vs/
+.vscode/
+
+# TypeScript build info
+*.tsbuildinfo
+
+## Arquivos de debug e trace
+*.aps
+*.pdb
+*.mdb
+*.cache
+*.ilk
+*.log
+TestResult*/  
+*.tlog  
+
+## Publicação local
+publish/
+wwwroot/**/*.{dll,exe,pdb}
+
+###############################################################################
+# AWS credenciais Dev
+###############################################################################
+
+dev_env.bat
+
+###############################################################################
+# REACT / NODE                                                                #
+###############################################################################
+
+## Dependências do npm (baixadas automaticamente pelo prebuild.bat)
+node_modules/
+
+## Arquivos de lock opcionalmente gerados (mantém apenas se quiser controlar)
+package-lock.json
+
+###############################################################################
+# ESBUILD                                                                     #
+###############################################################################
+
+# Bundle gerado automaticamente no pós-build (pode mudar de pasta/nome)
+wwwroot/assets/js/bundle.js
+
+###############################################################################
+# SISTEMAS OPERACIONAIS                                                       #
+###############################################################################
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+
+# Linux
+*~
+
+###############################################################################
+# FERRAMENTAS DIVERSAS                                                        #
+###############################################################################
+
+# Web Compiler (caso use cache/pasta de saída específica)
+webcompilerconfig.json.global.cache/
+
+###############################################################################
+# EXCEÇÕES (NÃO IGNORE)                                                       #
+###############################################################################
+# — Estes arquivos DEVEM permanecer sob controle de versão                    #
+###############################################################################
+
+!prebuild.bat
+!postbuild.bat
+!build/esbuild.exe
+!package.json
+!README.md
+!compilerconfig.json
+!**/*.jsx
+!**/*.tsx
+!**/*.csproj
+!**/*.cs
+!**/*.cshtml
+eb-deploy-bundle.zip

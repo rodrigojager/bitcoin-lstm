@@ -1,0 +1,145 @@
+
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: db
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_DB: btcdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./api/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d btcdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    networks:
+      - default
+
+  pyapi:
+    build: ./api
+    container_name: pyapi
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      PG_DB: btcdb
+      PG_USER: postgres
+      PG_PWD: ${PG_PWD}
+      PG_HOST: db
+      PG_PORT: 5432
+      BINANCE_BASE: https://api.binance.com
+      BINANCE_SYMBOL: BTCUSDT
+      BINANCE_INTERVAL: 5m
+      BINANCE_LIMIT: 1000
+      BINANCE_API_KEY: ""
+      LOOKBACK_DAYS: 90
+      ALPHA_DECAY: 0.999
+      LSTM_MODEL_PATH: /app/models/lstm_model.keras
+      LSTM_BUNDLE_PATH: /app/models/lstm_bundle.joblib
+      TRAIN_POLICY_PATH: /app/train_policy.json
+      BACKFILL_DAYS: 90
+      BACKFILL_SLEEP_MS: 500
+      API_PATH_PREFIX: ${API_PATH_PREFIX}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./api/models:/app/models
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/').status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=${TRAEFIK_NETWORK}"
+      - "traefik.http.routers.pyapi.rule=Host(`${API_HOST}`) && PathPrefix(`${API_PATH_PREFIX}`)"
+      - "traefik.http.routers.pyapi.entrypoints=${TRAEFIK_ENTRYPOINT}"
+      - "traefik.http.routers.pyapi.tls=true"
+      - "traefik.http.routers.pyapi.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
+      - "traefik.http.services.pyapi.loadbalancer.server.port=8000"
+      - "traefik.http.middlewares.pyapi-stripprefix.stripPrefix.prefixes=${API_PATH_PREFIX}"
+      - "traefik.http.routers.pyapi.middlewares=pyapi-stripprefix@docker"
+      # Fallback HTTP (sem TLS), até o certresolver estar configurado no Traefik
+      - "traefik.http.routers.pyapi-http.rule=Host(`${API_HOST}`) && PathPrefix(`${API_PATH_PREFIX}`)"
+      - "traefik.http.routers.pyapi-http.entrypoints=web"
+      - "traefik.http.routers.pyapi-http.service=pyapi"
+      - "traefik.http.routers.pyapi-http.middlewares=pyapi-stripprefix@docker"
+    networks:
+      - default
+      - traefik
+
+  site:
+    build: ./site
+    container_name: site
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ENABLE_HTTPS_REDIRECT: "false"
+      PythonApi__BaseUrl: https://${API_HOST}${API_PATH_PREFIX}
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=btcdb;Username=postgres;Password=${PG_PWD}
+    depends_on:
+      pyapi:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=${TRAEFIK_NETWORK}"
+      - "traefik.http.routers.site.rule=Host(`${SITE_HOST}`)"
+      - "traefik.http.routers.site.entrypoints=${TRAEFIK_ENTRYPOINT}"
+      - "traefik.http.routers.site.tls=true"
+      - "traefik.http.routers.site.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
+      - "traefik.http.services.site.loadbalancer.server.port=8080"
+      # Fallback HTTP (sem TLS)
+      - "traefik.http.routers.site-http.rule=Host(`${SITE_HOST}`)"
+      - "traefik.http.routers.site-http.entrypoints=web"
+      - "traefik.http.routers.site-http.service=site"
+    networks:
+      - default
+      - traefik
+
+  adminer:
+    image: adminer
+    container_name: adminer
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    depends_on:
+      db:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=${TRAEFIK_NETWORK}"
+      - "traefik.http.routers.adminer.rule=Host(`${ADMINER_HOST}`)"
+      - "traefik.http.routers.adminer.entrypoints=${TRAEFIK_ENTRYPOINT}"
+      - "traefik.http.routers.adminer.tls=true"
+      - "traefik.http.routers.adminer.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
+      - "traefik.http.services.adminer.loadbalancer.server.port=8080"
+      # Fallback HTTP (sem TLS)
+      - "traefik.http.routers.adminer-http.rule=Host(`${ADMINER_HOST}`)"
+      - "traefik.http.routers.adminer-http.entrypoints=web"
+      - "traefik.http.routers.adminer-http.service=adminer"
+    networks:
+      - default
+      - traefik
+
+volumes:
+  db_data:
+
+networks:
+  default:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK}
+
+

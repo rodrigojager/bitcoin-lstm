@@ -1,0 +1,21 @@
+/*
+Template Name: Velzon - Admin & Dashboard Template
+Author: Themesbrand
+Website: https://themesbrand.com/
+Contact: support@themesbrand.com
+File: Custom Css File
+*/
+
+/* Override rápido de cor primária do menu (quando aplicável) */
+.vertical-menu,
+.app-menu.navbar-menu {
+  background-color: #2D3A8C !important;
+  border-color: #2D3A8C !important;
+}
+
+.vertical-menu .navbar-brand-box,
+.vertical-menu .navbar-nav .nav-link,
+.app-menu .navbar-nav .nav-link {
+  --vz-vertical-menu-bg: #2D3A8C;
+  --vz-vertical-menu-border: #2D3A8C;
+}

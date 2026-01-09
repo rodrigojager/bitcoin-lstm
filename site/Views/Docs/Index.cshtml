@@ -1,0 +1,27 @@
+﻿@model TechChallenge.Models.DocViewModel
+@{
+    ViewBag.Title = "Documentação";
+    ViewBag.pTitle = "Documentação";
+    ViewBag.pageTitle = "Docs";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <aside class="col-md-2" id="doc-menu">
+        @Html.Partial("_Menu", Model.Docs)
+    </aside>
+
+    <main class="col-md-10">
+        @Html.Partial("_MarkdownContent", Model.Html)
+    </main>
+</div>
+
+@section scripts {
+    <script src="~/assets/js/docs.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"
+            onload="hljs.highlightAll();"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({ startOnLoad: true });</script>
+    
+}

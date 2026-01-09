@@ -1,0 +1,74 @@
+# OS/gerais
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editores/IDE
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.venv/
+venv/
+.env
+.env.*
+*.egg-info/
+dist/
+build/
+
+# API (Python)
+api/.env
+api/models/
+
+# .NET
+.vs/
+**/bin/
+**/obj/
+*.rsuser
+*.suo
+*.cache
+*.pdb
+*.mdb
+*.opendb
+*.dbmdl
+*.jfm
+*.nupkg
+*.snupkg
+*.svclog
+*.vssscc
+*.vspscc
+[Tt]est[Rr]esult*/
+TestResult.xml
+
+# Logs/coverage
+*.log
+logs/
+**/logs/
+coverage/
+*.cover*
+*.coverage
+*.coveragexml
+
+# Docker
+**/docker-compose.override.yml
+
+# Variáveis de ambiente
+*.env
+env.rodrigojager.prod
+
+# Outros
+*.iml
+*.swp
+*.swo

@@ -1,0 +1,19 @@
+{
+  "lstm_seq_len": 48,
+  "lstm_epochs": 50,
+  "lstm_batch_size": 64,
+  "lstm_lr": 0.001,
+  "lstm_patience": 8,
+
+  "train_max_hours": 24,
+  "train_min_hours": 12,
+  "futures_mape_threshold": 0.8,
+  "futures_rolling_n": 288
+}
+
+
+
+
+
+
+

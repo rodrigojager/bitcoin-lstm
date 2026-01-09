@@ -1,0 +1,565 @@
+﻿@{
+    ViewBag.Title = "Gráficos BTC";
+    ViewBag.pTitle = "Gráficos BTC";
+    ViewBag.pageTitle = "Gráficos BTC";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<!-- libs -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="/assets/libs/echarts/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2"></script>
+
+<style>
+    .chart-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.45)}
+    .spinner{width:30px;height:30px;border:3px solid #cbd5e1;border-top-color:#0d6efd;border-radius:50%;animation:spin .8s linear infinite}
+    @@keyframes spin{to{transform:rotate(360deg)}}
+    .chart-loading.hidden{display:none}
+    @@media (prefers-reduced-motion: reduce){.spinner{animation:none}}
+}</style>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-3" id="modelMetricsCard" style="display:none;">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap:16px">
+                    <div>
+                        <div class="text-muted small">Modelo (treino/validação)</div>
+                        <div class="h4 mb-0">LSTM — Qualidade do treino</div>
+                    </div>
+                    <div class="d-flex flex-wrap" style="gap:10px">
+                        <span class="badge bg-primary" style="font-size:1rem; padding:10px 12px">
+                            MAPE: <span id="mm_mape">--</span>
+                        </span>
+                        <span class="badge bg-secondary" style="font-size:1rem; padding:10px 12px">
+                            Épocas: <span id="mm_epochs">--</span>
+                        </span>
+                        <span class="badge bg-info text-dark" style="font-size:1rem; padding:10px 12px">
+                            RMSE: <span id="mm_rmse">--</span>
+                        </span>
+                        <span class="badge bg-light text-dark" style="font-size:1rem; padding:10px 12px; border:1px solid #e5e7eb">
+                            val_loss: <span id="mm_valloss">--</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="small text-muted" id="mm_meta" style="margin-top:8px"></div>
+            </div>
+        </div>
+        <div class="alert alert-info" id="metricsBox" style="display:none;">
+            <strong>Métricas (validação):</strong>
+            <span id="m_mae"></span> | <span id="m_mape"></span> | <span id="m_smape"></span>
+            <span class="text-muted" id="m_meta"></span>
+            <div id="m_targets" class="small text-muted" style="margin-top:4px"></div>
+            <div id="m_table_wrap" style="margin-top:8px;">
+                <table class="table table-sm table-bordered" style="max-width:800px; background:#fff;">
+                    <thead>
+                        <tr>
+                            <th>Métrica</th>
+                            <th>Bom</th>
+                            <th>Médio</th>
+                            <th>Ruim</th>
+                            <th>Atual</th>
+                        </tr>
+                    </thead>
+                    <tbody id="m_table_body">
+                        <tr>
+                            <td>MAE</td>
+                            <td id="mae_good">--</td>
+                            <td id="mae_med">--</td>
+                            <td id="mae_bad">--</td>
+                            <td id="mae_cur">--</td>
+                        </tr>
+                        <tr>
+                            <td>MAPE</td>
+                            <td id="mape_good">--</td>
+                            <td id="mape_med">--</td>
+                            <td id="mape_bad">--</td>
+                            <td id="mape_cur">--</td>
+                        </tr>
+                        <tr>
+                            <td>SMAPE</td>
+                            <td id="smape_good">--</td>
+                            <td id="smape_med">--</td>
+                            <td id="smape_bad">--</td>
+                            <td id="smape_cur">--</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="small" style="margin-top:6px;">
+                <span style="display:inline-block; width:14px; height:14px; background:rgba(13,110,253,0.08); border:1px solid rgba(13,110,253,0.25); vertical-align:middle; margin-right:6px;"></span>
+                <span class="text-muted">Observação: a faixa azul clara nos gráficos indica o período de validação (teste); o restante é treino.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <h3>Vela completa (OHLC) — Real × Previsto (t→t+1)</h3>
+        <div class="btn-group" style="margin-bottom:10px">
+            <button id="resetZoomCandle" class="btn btn-default btn-sm">Reset Zoom (Candles)</button>
+        </div>
+        <div id="candleChart" style="height: 400px; position: relative"></div>
+        <div class="chart-loading" id="loadCandle"><div class="spinner"></div></div>
+    </div>
+</div>
+
+<hr />
+
+<div class="row">
+    <div class="col-md-12">
+        <h3>Close Real (t+1) × Close Previsto (t→t+1)</h3>
+        <div class="btn-group" style="margin-bottom:10px">
+            <button id="resetZoomClose" class="btn btn-default btn-sm">Reset Zoom (Close)</button>
+        </div>
+        <div id="closeChartEC" style="height: 250px; position: relative"></div>
+        <div class="chart-loading" id="loadClose"><div class="spinner"></div></div>
+    </div>
+</div>
+
+<hr />
+
+<div class="row">
+    <div class="col-md-12">
+        <h3>Erro percentual do Close |prev - real|/real × 100</h3>
+        <div class="btn-group" style="margin-bottom:10px">
+            <button id="resetZoomErr" class="btn btn-default btn-sm">Reset Zoom (Erro)</button>
+        </div>
+        <div id="errorChartEC" style="height: 220px; position: relative"></div>
+        <div class="chart-loading" id="loadErr"><div class="spinner"></div></div>
+    </div>
+</div>
+
+<hr />
+
+<div class="row">
+    <div class="col-md-12">
+        <h3>Volume (real)</h3>
+        <div class="btn-group" style="margin-bottom:10px">
+            <button id="resetZoomVol" class="btn btn-default btn-sm">Reset Zoom (Volume)</button>
+        </div>
+        <div id="volumeChartEC" style="height: 220px; position: relative"></div>
+        <div class="chart-loading" id="loadVol"><div class="spinner"></div></div>
+    </div>
+</div>
+
+<hr />
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center" style="gap:10px; margin-bottom:10px">
+            <h3 style="margin:0">Futuros: Close Previsto x Real x Erro (%)</h3>
+            <button id="btnFutUpdate" class="btn btn-sm btn-outline-primary">Atualizar Futuros</button>
+            <button id="resetZoomFut" class="btn btn-sm btn-outline-secondary">Reset Zoom (Futuros)</button>
+            </div>
+        <div id="futChartEC" style="height: 260px; width: 100%; position: relative"></div>
+        <div class="chart-loading" id="loadFut"><div class="spinner"></div></div>
+            </div>
+            </div>
+
+<hr />
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center" style="gap:10px; margin-bottom:10px">
+            <h3 style="margin:0">Direção (tendência) — Previsto × Real</h3>
+            <span id="trendAcc" class="badge bg-info" style="font-size:0.9rem">Acurácia direcional: --%</span>
+            <span id="trendWDA" class="badge bg-success" style="font-size:0.9rem">WDA: --%</span>
+            <span id="trendWErr" class="badge bg-danger" style="font-size:0.9rem">Erro ponderado: --%</span>
+            <span id="trendAbsHit" class="badge bg-secondary" style="font-size:0.9rem">|ret| acertos: --%</span>
+            <span id="trendAbsMiss" class="badge bg-secondary" style="font-size:0.9rem">|ret| erros: --%</span>
+            <button id="resetZoomTrend" class="btn btn-sm btn-outline-secondary">Reset Zoom (Tendência)</button>
+            </div>
+        <div id="futTrendEC" style="height: 220px; width: 100%; position: relative"></div>
+        <div class="chart-loading" id="loadTrend"><div class="spinner"></div></div>
+    </div>
+</div>
+
+<script>
+    function toBR(dt) {
+      return dt.toLocaleString('pt-BR', { year:'numeric', month:'2-digit', day:'2-digit',
+                                          hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+    }
+    function parseISO(s){ return new Date(s); }
+
+    let candleChartEC, closeChartEC, errChartEC, volChartEC, futChartEC;
+    let validationStart = null;
+    let lastMetrics = null;
+
+    function loadMetrics(){
+      $.getJSON('/Charts/Metrics', function(m){
+        if (!m || m.status!=='ok') return;
+        $('#modelMetricsCard').show();
+        $('#metricsBox').show();
+        $('#m_mae').text(`MAE: ${Number(m.mae).toFixed(2)}`);
+        $('#m_mape').text(`MAPE: ${Number(m.mape).toFixed(2)}%`);
+        $('#m_smape').text(`SMAPE: ${Number(m.smape).toFixed(2)}%`);
+        $('#m_meta').text(` (n=${m.samples}, split ${m.split_train}/${m.split_total})`);
+        $('#mm_mape').text(`${Number(m.mape).toFixed(2)}%`);
+        $('#mm_epochs').text(m.epochs != null ? `${m.epochs}` : '--');
+        $('#mm_rmse').text(m.rmse != null ? Number(m.rmse).toFixed(2) : '--');
+        $('#mm_valloss').text(m.val_loss != null ? Number(m.val_loss).toFixed(6) : '--');
+        const started = m.started_at ? `início ${m.started_at}` : null;
+        const finished = m.finished_at ? `fim ${m.finished_at}` : null;
+        const parts = [started, finished].filter(Boolean);
+        $('#mm_meta').text(parts.length ? parts.join(' · ') : '');
+        validationStart = m.validation_start ? parseISO(m.validation_start) : null;
+        lastMetrics = m;
+      });
+    }
+
+    function testRegionMarkArea(){
+      if (!validationStart) return [];
+      return [{ name: 'Validação', xAxis: validationStart, itemStyle:{ color:'rgba(13,110,253,0.08)' } }, { xAxis: 'max' }];
+    }
+
+    function showSkel(elId){
+      var $host = $('#'+elId);
+      // mostra overlay de loading posicionado como irmão
+      $host.siblings('.chart-loading').removeClass('hidden');
+    }
+    function hideSkel(elId){
+      var $host = $('#'+elId);
+      // esconde overlay de loading
+      $host.siblings('.chart-loading').addClass('hidden');
+    }
+
+    function loadSeries(){
+      showSkel('candleChart');
+      showSkel('closeChartEC');
+      showSkel('errorChartEC');
+      showSkel('volumeChartEC');
+      $.getJSON('/Charts/Series', function(data){
+        const pts = data.points || [];
+        if (pts.length < 2) return;
+
+        const labelsTime = [];
+        const closeReal = [];
+        const closePred = [];
+        const errClosePerc = [];
+        const volReal = [];
+
+        const candleReal = [];// ECharts formato: [open, close, low, high]
+        const candlePred = [];
+
+        for (let i=1; i<pts.length; i++){
+          const r = pts[i].real;
+          const t = parseISO(r.time);
+          labelsTime.push(t);
+
+          candleReal.push([+r.open, +r.close, +r.low, +r.high]);
+          closeReal.push([t, +r.close]);
+          volReal.push([t, +r.volume]);
+
+          const pPrev = pts[i-1].pred;
+          if (pPrev){
+            candlePred.push([+pPrev.open_next, +pPrev.close_next, +pPrev.low_next, +pPrev.high_next]);
+            closePred.push([t, +pPrev.close_next]);
+            const denom = Math.abs(+r.close) > 0 ? Math.abs(+r.close) : null;
+            errClosePerc.push([t, denom ? (Math.abs(+pPrev.close_next - +r.close) / denom * 100.0) : null]);
+          } else {
+            candlePred.push(null);
+            closePred.push([t, null]); errClosePerc.push([t, null]);
+          }
+        }
+
+        const area = testRegionMarkArea();
+
+        // ------------- Benchmarks dinâmicos (bom/médio/ruim) -------------
+        try {
+          let idxVal = validationStart ? labelsTime.findIndex(t => t >= validationStart) : -1;
+          if (idxVal < 1) idxVal = Math.max(1, Math.floor(labelsTime.length * 0.8)); // fallback ~últimos 20%
+          if (idxVal >= 1 && lastMetrics) {
+            // MAE% relativo ao preço médio da validação
+            let sumPrice = 0, cntPrice = 0;
+            for (let i = idxVal; i < closeReal.length; i++) { sumPrice += closeReal[i][1]; cntPrice++; }
+            const meanPriceVal = cntPrice ? (sumPrice / cntPrice) : null;
+
+            // ATR% (true range médio / preço médio) na validação
+            let sumTR = 0, cntTR = 0;
+            for (let i = idxVal; i < candleReal.length; i++) {
+              const o = candleReal[i][0], c = candleReal[i][1], l = candleReal[i][2], h = candleReal[i][3];
+              const prevClose = closeReal[i-1][1];
+              const tr = Math.max(h - l, Math.abs(h - prevClose), Math.abs(l - prevClose));
+              sumTR += tr; cntTR++;
+            }
+            const atr = cntTR ? (sumTR / cntTR) : null;
+            const atrPct = (atr && meanPriceVal) ? (atr / meanPriceVal * 100.0) : null;
+
+            if (meanPriceVal && atrPct != null) {
+              const maePct = (Number(lastMetrics.mae) / meanPriceVal) * 100.0;
+              const categorize = (valPct, basePct) => {
+                if (valPct <= 0.5 * basePct) return { label: 'bom', css: 'text-success' };
+                if (valPct <= 1.0 * basePct) return { label: 'médio', css: 'text-warning' };
+                return { label: 'ruim', css: 'text-danger' };
+              };
+              const catMAE = categorize(maePct, atrPct);
+              const catMAPE = categorize(Number(lastMetrics.mape), atrPct);
+              const catSMAPE = categorize(Number(lastMetrics.smape), atrPct);
+
+              // Baseline ingênuo: close_next = close(t)
+              let baseAbsSum = 0, basePctSum = 0, baseSymSum = 0, baseN = 0;
+              for (let i = idxVal; i < closeReal.length; i++) {
+                const pred = closeReal[i-1][1];
+                const real = closeReal[i][1];
+                const diff = Math.abs(pred - real);
+                baseAbsSum += diff;
+                basePctSum += (real !== 0 ? (diff / Math.abs(real) * 100.0) : 0);
+                baseSymSum += ( (Math.abs(pred) + Math.abs(real)) !== 0 ? (2.0 * diff / (Math.abs(pred) + Math.abs(real)) * 100.0) : 0 );
+                baseN++;
+              }
+              const baseMAE = baseN ? (baseAbsSum / baseN) : null;
+              const baseMAPE = baseN ? (basePctSum / baseN) : null;
+              const baseSMAPE = baseN ? (baseSymSum / baseN) : null;
+
+              const refBom = (0.5 * atrPct).toFixed(2);
+              const refMed = (1.0 * atrPct).toFixed(2);
+              const line1 = `Referência (ATR%≈${atrPct.toFixed(2)}%): Bom ≤ ${refBom}%, Médio ≤ ${refMed}%, Ruim > ${refMed}%`;
+              const line2 = `MAE%=${maePct.toFixed(2)}% (MAE/Preço médio) · `+
+                            `MAPE=${Number(lastMetrics.mape).toFixed(2)}% · `+
+                            `SMAPE=${Number(lastMetrics.smape).toFixed(2)}%`;
+              const line3 = `Baseline ingênuo (close_next=close_t) → MAE%≈${(baseMAE/meanPriceVal*100.0).toFixed(2)}%, `+
+                            `MAPE≈${(baseMAPE??0).toFixed(2)}%, SMAPE≈${(baseSMAPE??0).toFixed(2)}%`;
+              $('#m_targets').html(`${line1}<br/>${line2}<br/><span class="text-muted">${line3}</span>`);
+
+              // Popular tabela de faixas (bom/médio/ruim) e valor atual
+              const maeGood = `${(0.5*atrPct).toFixed(2)}%`;
+              const maeMed  = `${(1.0*atrPct).toFixed(2)}%`;
+              const maeBad  = `>${(1.0*atrPct).toFixed(2)}%`;
+              const mapeGood= `${(0.5*atrPct).toFixed(2)}%`;
+              const mapeMed = `${(1.0*atrPct).toFixed(2)}%`;
+              const mapeBad = `>${(1.0*atrPct).toFixed(2)}%`;
+              const smapeGood= `${(0.5*atrPct).toFixed(2)}%`;
+              const smapeMed = `${(1.0*atrPct).toFixed(2)}%`;
+              const smapeBad = `>${(1.0*atrPct).toFixed(2)}%`;
+
+              $('#mae_good').text(maeGood);
+              $('#mae_med').text(maeMed);
+              $('#mae_bad').text(maeBad);
+              $('#mae_cur').html(`${maePct.toFixed(2)}% <span class="${catMAE.css}">(${catMAE.label})</span>`);
+
+              $('#mape_good').text(mapeGood);
+              $('#mape_med').text(mapeMed);
+              $('#mape_bad').text(mapeBad);
+              $('#mape_cur').html(`${Number(lastMetrics.mape).toFixed(2)}% <span class="${catMAPE.css}">(${catMAPE.label})</span>`);
+
+              $('#smape_good').text(smapeGood);
+              $('#smape_med').text(smapeMed);
+              $('#smape_bad').text(smapeBad);
+              $('#smape_cur').html(`${Number(lastMetrics.smape).toFixed(2)}% <span class="${catSMAPE.css}">(${catSMAPE.label})</span>`);
+            }
+          }
+        } catch (e) { /* silencioso */ }
+
+        const ecEl = document.getElementById('candleChart');
+        if (candleChartEC && typeof candleChartEC.dispose === 'function') candleChartEC.dispose();
+        candleChartEC = echarts.init(ecEl);
+        const candleOption = {
+          animation: false,
+          tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+          legend: { data: ['Real (OHLC)','Previsto (t→t+1)'] },
+          xAxis: { type: 'time' },
+          yAxis: { scale: true },
+          dataZoom: [{ type: 'inside', xAxisIndex: [0], start: 80, end: 100 }, { show: true, xAxisIndex: [0], type: 'slider', top: 10 }],
+          series: [
+            {
+              name: 'Real (OHLC)',
+              type: 'candlestick',
+              itemStyle: { color: '#22c55e', color0: '#ef4444', borderColor: '#22c55e', borderColor0: '#ef4444' },
+              encode: { x: 0, y: [1,2,3,4] },
+              data: labelsTime.map((t,i)=>({ value:[t, ...candleReal[i]] })),
+              markArea: area.length? { data: [area] }: undefined
+            },
+            {
+              name: 'Previsto (t→t+1)',
+              type: 'candlestick',
+              itemStyle: { color: 'rgba(13,110,253,0.6)', color0: 'rgba(108,117,125,0.6)', borderColor: 'rgba(13,110,253,0.8)', borderColor0: 'rgba(108,117,125,0.8)' },
+              encode: { x: 0, y: [1,2,3,4] },
+              data: labelsTime.map((t,i)=> candlePred[i] ? ({ value:[t, ...candlePred[i]] }) : null).filter(Boolean)
+            }
+          ]
+        };
+        candleChartEC.setOption(candleOption);
+        hideSkel('candleChart');
+
+        const closeEl = document.getElementById('closeChartEC');
+        if (closeChartEC && typeof closeChartEC.dispose === 'function') closeChartEC.dispose();
+        closeChartEC = echarts.init(closeEl);
+        const closeOption = {
+          animation: false,
+          tooltip: { trigger: 'axis' },
+          legend: { data: ['Close Real (t+1)','Close Previsto (t→t+1)'] },
+          xAxis: { type: 'time' },
+          yAxis: { type: 'value', scale: true },
+          dataZoom: [{ type: 'inside', xAxisIndex: [0], start: 80, end: 100 }, { show: true, xAxisIndex: [0], type: 'slider', top: 10 }],
+          series: [
+            { name: 'Close Real (t+1)', type: 'line', showSymbol: false, data: closeReal, markArea: area.length? { data:[area] }: undefined },
+            { name: 'Close Previsto (t→t+1)', type: 'line', showSymbol: false, data: closePred }
+          ]
+        };
+        closeChartEC.setOption(closeOption);
+        hideSkel('closeChartEC');
+
+        const errEl = document.getElementById('errorChartEC');
+        if (errChartEC && typeof errChartEC.dispose === 'function') errChartEC.dispose();
+        errChartEC = echarts.init(errEl);
+        const errOption = {
+          animation: false,
+          tooltip: { trigger: 'axis', valueFormatter: (v)=> v!=null? `${Number(v).toFixed(2)}%` : '' },
+          legend: { data: ['Erro % (Close)'] },
+          xAxis: { type: 'time' },
+          yAxis: { type: 'value', min: 0, axisLabel: { formatter: '{value}%' } },
+          dataZoom: [{ type: 'inside', xAxisIndex: [0], start: 80, end: 100 }, { show: true, xAxisIndex: [0], type: 'slider', top: 10 }],
+          series: [ { name: 'Erro % (Close)', type: 'line', showSymbol: false, data: errClosePerc, markArea: area.length? { data:[area] }: undefined } ]
+        };
+        errChartEC.setOption(errOption);
+        hideSkel('errorChartEC');
+
+        const volEl = document.getElementById('volumeChartEC');
+        if (volChartEC && typeof volChartEC.dispose === 'function') volChartEC.dispose();
+        volChartEC = echarts.init(volEl);
+        const volOption = {
+          animation: false,
+          tooltip: { trigger: 'axis' },
+          legend: { data: ['Volume (real)'] },
+          xAxis: { type: 'time' },
+          yAxis: { type: 'value', min: 0 },
+          dataZoom: [{ type: 'inside', xAxisIndex: [0], start: 80, end: 100 }, { show: true, xAxisIndex: [0], type: 'slider', top: 10 }],
+          series: [ { name: 'Volume (real)', type: 'line', showSymbol: false, data: volReal, markArea: area.length? { data:[area] }: undefined } ]
+        };
+        volChartEC.setOption(volOption);
+        hideSkel('volumeChartEC');
+
+        echarts.connect([candleChartEC, closeChartEC, errChartEC, volChartEC]);
+      });
+    }
+
+    function loadFuturos(){
+      showSkel('futChartEC');
+      showSkel('futTrendEC');
+      $.getJSON('/Charts/Futures', function(data){
+        const pts = data.points || [];
+        const pred = [], real = [], errp = [];
+        for (const p of pts){
+          const t = parseISO(p.time);
+          if (p.pred_close != null) pred.push([t, +p.pred_close]);
+          if (p.real_close != null) real.push([t, +p.real_close]);
+          if (p.err_close != null && p.real_close) errp.push([t, Math.abs(+p.err_close / +p.real_close * 100.0)]);
+        }
+        const el = document.getElementById('futChartEC');
+        if (futChartEC && typeof futChartEC.dispose === 'function') futChartEC.dispose();
+        futChartEC = echarts.init(el);
+        const opt = {
+          animation:false,
+          tooltip:{ trigger:'axis', valueFormatter:(v)=> v!=null? Number(v).toFixed(2):'' },
+          legend:{ data:['Previsto (close)','Real (close)','Erro % (close)'] },
+          xAxis:{ type:'time' },
+          yAxis:[
+            { type:'value', scale:true, name:'Preço' },
+            { type:'value', min:0, name:'Erro %', axisLabel:{ formatter:'{value}%' } }
+          ],
+          dataZoom:[ {type:'inside', xAxisIndex:[0], start:70, end:100}, {show:true, xAxisIndex:[0], type:'slider', top:10} ],
+          series:[
+            { name:'Previsto (close)', type:'line', showSymbol:false, data:pred, yAxisIndex:0 },
+            { name:'Real (close)', type:'line', showSymbol:false, data:real, yAxisIndex:0 },
+            { name:'Erro % (close)', type:'line', showSymbol:false, data:errp, yAxisIndex:1 }
+          ]
+        };
+        futChartEC.setOption(opt);
+
+        // Tendência sobreposta e métricas direcionais
+        const trendPred = [], trendReal = [];
+        const retReal = []; // retornos percentuais reais
+        const sign = (a,b)=>{ const d = b - a; const tol = 1e-6; return d > tol ? 1 : (d < -tol ? -1 : 0); };
+        for (let i=1;i<pred.length;i++) trendPred.push([pred[i][0], sign(pred[i-1][1], pred[i][1])]);
+        for (let i=1;i<real.length;i++){
+          const t = real[i][0];
+          trendReal.push([t, sign(real[i-1][1], real[i][1])]);
+          const rprev = real[i-1][1], rcur = real[i][1];
+          const retp = rprev !== 0 ? (rcur/rprev - 1.0) : 0.0;
+          retReal.push([t, retp]);
+        }
+        // Alinhar por tempo comum
+        const predMap = new Map(trendPred.map(([t,v])=>[+t, v]));
+        const retMap = new Map(retReal.map(([t,v])=>[+t, v]));
+        const common = [];
+        for (const [t, vr] of trendReal){ if (predMap.has(+t)) common.push([t, predMap.get(+t), vr]); }
+        let correct = 0, total = 0;
+        const errBin = [];
+        let wNum = 0, wDen = 0; // para WDA
+        let absHitSum = 0, hitN = 0, absMissSum = 0, missN = 0;
+        for (const [t, vp, vr] of common){
+          const ok = (vp === vr) ? 1 : 0;
+          const r = Math.abs(retMap.get(+t) || 0);
+          errBin.push([t, 1 - ok]);
+          total++; correct += ok;
+          wDen += r; wNum += ok * r;
+          if (ok){ absHitSum += r; hitN++; } else { absMissSum += r; missN++; }
+        }
+        const acc = total ? (correct/total*100.0) : 0;
+        const wda = wDen > 0 ? (wNum/wDen*100.0) : 0;
+        const werr = 100.0 - wda;
+        const meanAbsHit = hitN ? (absHitSum/hitN*100.0) : 0; // em %
+        const meanAbsMiss = missN ? (absMissSum/missN*100.0) : 0;
+        $('#trendAcc').text(`Acurácia direcional: ${acc.toFixed(1)}%`);
+        $('#trendWDA').text(`WDA: ${wda.toFixed(1)}%`);
+        $('#trendWErr').text(`Erro ponderado: ${werr.toFixed(1)}%`);
+        $('#trendAbsHit').text(`|ret| acertos: ${meanAbsHit.toFixed(2)}%`);
+        $('#trendAbsMiss').text(`|ret| erros: ${meanAbsMiss.toFixed(2)}%`);
+
+        const trendEl = document.getElementById('futTrendEC');
+        if (futTrendEC && typeof futTrendEC.dispose === 'function') futTrendEC.dispose();
+        futTrendEC = echarts.init(trendEl);
+        futTrendEC.setOption({
+          animation:false,
+          tooltip:{ trigger:'axis', valueFormatter:(v)=> (v===1?'Alta':v===0?'Estável':v===-1?'Baixa':Number(v).toFixed(2)) },
+          legend:{ data:['Dir Prevista','Dir Real','Erro (0/1)'] },
+          xAxis:{ type:'time' },
+          yAxis:[
+            { type:'value', min:-1, max:1, interval:1, axisLabel:{ formatter:(v)=> v===1?'Alta':(v===0?'Estável':'Baixa') } },
+            { type:'value', min:0, max:1, interval:1, axisLabel:{ formatter:'{value}' } }
+          ],
+          dataZoom:[ {type:'inside', xAxisIndex:[0], start:70, end:100}, {show:true, xAxisIndex:[0], type:'slider', top:10} ],
+          series:[
+            { name:'Dir Prevista', type:'line', step:'end', showSymbol:false, data:trendPred, yAxisIndex:0 },
+            { name:'Dir Real', type:'line', step:'end', showSymbol:false, data:trendReal, yAxisIndex:0 },
+            { name:'Erro (0/1)', type:'bar', data:errBin, yAxisIndex:1, itemStyle:{ opacity:0.35 } }
+          ]
+        });
+
+        echarts.connect([futChartEC, futTrendEC]);
+        hideSkel('futChartEC');
+        hideSkel('futTrendEC');
+      });
+    }
+
+    $('#btnFutUpdate').on('click', function(){
+      showSkel('futChartEC');
+      showSkel('futTrendEC');
+      $.post('/Charts/FuturesUpdate').always(function(){ loadFuturos(); });
+    });
+    // Reset zoom handlers
+    $('#resetZoomCandle').on('click', function(){
+      candleChartEC?.dispatchAction({ type:'dataZoom', start:0, end:100 });
+    });
+    $('#resetZoomClose').on('click', function(){
+      closeChartEC?.dispatchAction({ type:'dataZoom', start:0, end:100 });
+    });
+    $('#resetZoomErr').on('click', function(){
+      errChartEC?.dispatchAction({ type:'dataZoom', start:0, end:100 });
+    });
+    $('#resetZoomVol').on('click', function(){
+      volChartEC?.dispatchAction({ type:'dataZoom', start:0, end:100 });
+    });
+    $('#resetZoomFut').on('click', function(){
+      futChartEC?.dispatchAction({ type:'dataZoom', start:0, end:100 });
+    });
+    $('#resetZoomTrend').on('click', function(){
+      futTrendEC?.dispatchAction({ type:'dataZoom', start:0, end:100 });
+      futChartEC?.dispatchAction({ type:'dataZoom', start:0, end:100 });
+    });
+
+    $(function(){ loadMetrics(); setTimeout(loadSeries, 300); loadFuturos(); });
+</script>

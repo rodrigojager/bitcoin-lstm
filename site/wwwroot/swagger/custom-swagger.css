@@ -1,0 +1,36 @@
+﻿/* ESPAÇO EXTRA NO TOPO + COR DE FUNDO */
+body {
+    margin-top: 50px;
+    background: #1e1e1e;
+    color: #fefefe;
+    font-family: "Roboto", Arial, sans-serif;
+}
+
+.swagger-ui .opblock.opblock {
+    background-color: #fff !important;
+    border: none;
+    box-shadow: 0 1px 2px rgba(56, 65, 74, .15);
+}
+
+.swagger-ui .opblock-tag {
+    border-bottom: 0px !important;
+    color: var(--vz-accordion-active-color) !important;
+    background-color: var(--vz-accordion-active-bg) !important;
+    -webkit-box-shadow: inset 0 calc(-1 * var(--vz-accordion-border-width)) 0 var(--vz-accordion-border-color) !important;
+    box-shadow: inset 0 calc(-1 * var(--vz-accordion-border-width)) 0 var(--vz-accordion-border-color) !important;
+}
+.swagger-ui .opblock.is-open .opblock-summary {
+    border: none !important;
+}
+
+ul.nav.nav-pills.nav-customs.nav-danger.mb-3.mt-3 {
+/*    padding: 6px 0 !important;*/
+    margin-left: 15px !important;
+}
+.no-margin > .tab-content.text-muted > .tab-pane.active {
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-bottom:30px;
+}
+
+/* QUALQUER OUTRO SELETOR QUE QUISER ALTERAR… */

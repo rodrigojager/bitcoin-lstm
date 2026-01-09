@@ -1,0 +1,56 @@
+
+/*# sourceMappingURL=custom.min.css.map */
+.page-content {
+    padding: 1.5rem calc(1.5rem * .5) 60px calc(1.5rem * .5) !important;
+}
+li.list-group-item.active > a.doc-link {
+    color: #fff;
+}
+
+.markdown-body > hr {
+    opacity: .07 !important;
+    margin: 2rem 0 !important;
+}
+
+/* Overrides de cor primária/indigo para a identidade visual */
+:root{
+    --vz-indigo:#2D3A8C;
+    --vz-primary:#2D3A8C;
+    --vz-primary-rgb:45,58,140;
+    /* Força list-group ativo na nova cor */
+    --vz-list-group-active-bg:#2D3A8C;
+    --vz-list-group-active-border-color:#2D3A8C;
+}
+
+/* Escopo do Bootstrap quando usa data-bs-theme=light */
+html[data-bs-theme="light"],
+[data-bs-theme="light"]{
+    --vz-indigo:#2D3A8C;
+    --vz-primary:#2D3A8C;
+    --vz-primary-rgb:45,58,140;
+    --vz-list-group-active-bg:#2D3A8C;
+    --vz-list-group-active-border-color:#2D3A8C;
+}
+
+/* Menu lateral (vertical) */
+.vertical-menu,
+.app-menu.navbar-menu{
+    background-color:#2D3A8C !important;
+    border-color:#2D3A8C !important;
+}
+.vertical-menu .navbar-brand-box,
+.vertical-menu .navbar-nav .nav-link,
+.app-menu .navbar-nav .nav-link{
+    --vz-vertical-menu-bg:#2D3A8C;
+    --vz-vertical-menu-border:#2D3A8C;
+}
+
+/* List group: força variáveis e fallback direto no item ativo */
+.list-group{
+    --vz-list-group-active-bg:#2D3A8C !important;
+    --vz-list-group-active-border-color:#2D3A8C !important;
+}
+.list-group .list-group-item.active{
+    background-color:#2D3A8C !important;
+    border-color:#2D3A8C !important;
+}

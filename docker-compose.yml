@@ -1,0 +1,95 @@
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: db
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_DB: btcdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./api/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d btcdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  pyapi:
+    build: ./api
+    container_name: pyapi
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      PG_DB: btcdb
+      PG_USER: postgres
+      PG_PWD: ${PG_PWD}
+      PG_HOST: db
+      PG_PORT: 5432
+      BINANCE_BASE: https://api.binance.com
+      BINANCE_SYMBOL: BTCUSDT
+      BINANCE_INTERVAL: 5m
+      BINANCE_LIMIT: 1000
+      BINANCE_API_KEY: ""
+      LOOKBACK_DAYS: 90
+      ALPHA_DECAY: 0.999
+      LSTM_MODEL_PATH: /app/models/lstm_model.keras
+      LSTM_BUNDLE_PATH: /app/models/lstm_bundle.joblib
+      TRAIN_POLICY_PATH: /app/train_policy.json
+      BACKFILL_DAYS: 90
+      BACKFILL_SLEEP_MS: 500
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api/models:/app/models
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,urllib.request,sys; prefix=os.getenv('API_PATH_PREFIX','').strip(); prefix='/' + prefix if prefix and not prefix.startswith('/') else prefix; prefix=prefix.rstrip('/'); url='http://localhost:8000' + prefix + '/'; sys.exit(0 if urllib.request.urlopen(url).status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  site:
+    build: ./site
+    container_name: site
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      PythonApi__BaseUrl: http://pyapi:8000
+      ENABLE_HTTPS_REDIRECT: "false"
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=btcdb;Username=postgres;Password=${PG_PWD}
+    depends_on:
+      pyapi:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+
+  adminer:
+    image: adminer
+    container_name: adminer
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - "8082:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
+    external: true
+    name: projeto-fase4_db_data
