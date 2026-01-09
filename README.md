@@ -4,6 +4,8 @@ Este projeto apresenta uma solução completa que inclui uma API em Python que t
 
 Além da API, tem um projeto em Asp .NET 9.0 MVC que além de servir esse site, tem jobs configurados através do Quartz.NET para fazer requisições para os endpoints da API para alimentar com dados atualizados o banco de dados em PostgreSQL a cada 5 minutos. O treinamento do modelo é orquestrado pelo Quartz (Opção C): um job diário executa `POST /train` e `POST /series/rebuild`, e outro job faz checagem de drift via MAPE(rolling) em `futures` para decidir se treina antes do diário. Tanto a API em Python, quanto a aplicação do site e os jobs em ASP .NET, quanto o PostgreSQL e o Adminer para consultar os dados gravados estão todos dentro de containers Docker, agrupados com Docker Compose e hospedados em minha VPS, gerenciados com Portainer e usando o Traefik para proxy reverso.
 
+A API, a documentação com o site e os gráficos estão disponívelem https://rodrigojager.com/
+
 ---
 
 ## 1. Motivação
