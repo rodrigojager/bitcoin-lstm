@@ -31,7 +31,7 @@ const string CorsPolicy = "FrontendCors";
 builder.Services.AddCors(opts =>
 {
     opts.AddPolicy(CorsPolicy, p => p
-        // *** EM PRODUÇÃO TROQUE POR .WithOrigins("https://app.seudominio.com") ***
+        // .WithOrigins("https://...") ***
         .AllowAnyOrigin()
         .AllowAnyHeader()
         .AllowAnyMethod()
@@ -56,7 +56,7 @@ builder.Services.AddQuartz(q =>
         .WithIdentity("IngestTrigger")
         .WithCronSchedule(builder.Configuration["PythonApi:IngestCron"] ?? "0 */5 * * * ?"));
 
-    // Opção C: Treino diário fixo + checagem de drift (MAPE rolling em futures)
+    // Treino diário fixo + checagem de drift (MAPE rolling em futures)
     var trainDailyKey = new JobKey("TrainDailyJob");
     q.AddJob<TrainDailyJob>(opts => opts.WithIdentity(trainDailyKey));
     q.AddTrigger(t => t.ForJob(trainDailyKey)
