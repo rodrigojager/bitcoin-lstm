@@ -1,10 +1,21 @@
-﻿## Apresentação
+## Apresentação
 
 Este projeto apresenta uma solução completa que inclui uma API em Python que tem endpoints que servem para obter os dados referentes aos klines/candlesticks/velas dos preços do BitCoin conforme fornecido pela Binance, criar um modelo de regressão para predizer klines, modelo de classificação para dizer se a previsão é de subida ou descida e trazer informações para gerar gráficos para melhorar acompanhar os resultados. Existe um endpoint que serve para popular inicialmente o banco de dados com informações dos ultimos 90 dias, caso não haja dados suficientes recentes, executado uma única vez e endpoint para alimentar o banco de dados com o valor atual, sob demanda. A lista completa de endpoints com suas funcionalidades estão disponíveis no item do menu da documentação "Endpoints da API".
 
 Além da API, tem um projeto em Asp .NET 9.0 MVC que além de servir esse site, tem jobs configurados através do Quartz.NET para fazer requisições para os endpoints da API para alimentar com dados atualizados o banco de dados em PostgreSQL a cada 5 minutos. O treinamento do modelo é orquestrado pelo Quartz (Opção C): um job diário executa `POST /train` e `POST /series/rebuild`, e outro job faz checagem de drift via MAPE(rolling) em `futures` para decidir se treina antes do diário. Tanto a API em Python, quanto a aplicação do site e os jobs em ASP .NET, quanto o PostgreSQL e o Adminer para consultar os dados gravados estão todos dentro de containers Docker, agrupados com Docker Compose e hospedados em minha VPS, gerenciados com Portainer e usando o Traefik para proxy reverso.
 
-A solução da API está disponível no GitHub do desenvolvedor: [Bitcoin Machine Learning Model](https://github.com/rodrigojager/bitcoin-ml/) e para acessar a API em produção entre em http://rodrigojager.me/bitcoinML e no menu principal escolha API. Você será direcionado a uma página com o Swagger.
+A solução da API está disponível no GitHub do desenvolvedor: [Bitcoin LSTM](https://github.com/rodrigojager/bitcoin-lstm/). Em produção, os hosts/paths ficam configuráveis via variáveis de ambiente (ex.: `SITE_HOST`, `API_HOST`, `API_PATH_PREFIX`).
+
+### O que o modelo faz (em alto nível)
+- O modelo aprende a prever **o próximo candle** (**t→t+1**, horizonte de 5 minutos), usando um histórico recente (sequência) como entrada.
+- Saídas:
+  - **Regressão**: `open_next`, `high_next`, `low_next`, `close_next`, `amp_next`
+  - **Classificação**: direção do próximo candle (probabilidade de alta/baixa)
+
+### Limitações (importante para interpretação)
+- **Horizonte curto**: prever o próximo candle não implica previsão de longo prazo.
+- **Sinal fraco x ruído**: boa métrica em validação pode não se manter em produção.
+- **Custos e execução**: o projeto não modela taxa/spread/slippage, então não conclui “compra/venda” automaticamente.
 
 #### 1. Introdução
 
@@ -16,11 +27,21 @@ O desenvolvimento dessa solução visa atender ao Tech Challenge **Fase 04** do 
 
 #### 3. Requisitos
 
-* Construa uma API que colete dados (se possível, em tempo real) e armazene isso em um banco de dados convencional, uma estrutura de DW ou até mesmo um Data Lake 
-* Construa um modelo de ML à sua escolha que utilize essa base de dados para treinar o mesmo.
-* Seu modelo deve seguir com seu código no github e a devida documentação.
-* Você deve ter uma apresentação visual do storytelling do seu modelo (contando todas as etapas realizadas até a entrega final por meio de um vídeo explicativo). O vídeo pode ser entregue através de um link do YouTube junto com o link do seu repositório do github, por meio de um arquivo txt via upload na plataforma online.
-* Seu modelo deve ser produtivo (alimentar uma aplicação simples ou um dashboard).
+* Coleta de Dados: utilize um dataset de preços históricos de ações,
+como o Yahoo Finance ou qualquer outro dataset financeiro disponível
+* Construa um modelo de deep learning utilizando LSTM para capturar padrões temporais nos dados de preços das ações.
+* Treinamento: treine o modelo utilizando uma parte dos dados e ajuste os hiperparâmetros para otimizar o desempenho.
+* Avaliação: avalie o modelo utilizando dados de validação e utilize métricas como MAE (Mean Absolute Error), RMSE (Root Mean Square Error), MAPE (Erro Percentual Absoluto Médio) ou outra métrica apropriada para medir a precisão das previsões.
+* Salvar o Modelo: após atingir um desempenho satisfatório, salve o modelo treinado em um formato que possa ser utilizado para inferência.
+* Criação da API: desenvolva uma API RESTful utilizando Flask ou FastAPI para servir o modelo. A API deve permitir que o usuário forneça dados históricos de preços e receba previsões dos preços futuros.
+* Monitoramento: configure ferramentas de monitoramento para rastrear a performance do modelo em produção, incluindo tempo de resposta e utilização de recursos.
+
+Entregáveis:
+
+* Código-fonte do modelo LSTM em repositório GIT documentação.
+* Scripts ou contêineres Docker para deploy da API.
+* Link para a API em produção
+* Vídeo mostrando e explicando todo o funcionamento da API
 
 #### 4. Arquitetura Geral
 
